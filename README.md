@@ -59,6 +59,7 @@ Tabela `usuario`:
   - **1 usuário**: `admin` / `admin123`
   - **10 lançamentos** (misturando `RECEITA` e `DESPESA`)
 - Ao iniciar, se **não existir nenhum registro** em `lancamento`, a aplicação executa o `seed.sql`.
+- Importante: em produção/VM, o banco fica em `instance/app.db`. Em atualizações da aplicação, o banco **não é recriado** (o seed não roda novamente se já houver dados).
 
 ### Interface desenvolvida
 
@@ -188,6 +189,44 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw status verbose || true
 ```
+
+### Como atualizar a aplicação na VM (quando houver novos commits)
+
+Quando você fizer `git push` para o repositório, atualize a VM assim:
+
+```bash
+ssh univates@177.44.248.12
+cd ~/despesas-receitas
+git pull
+source .venv/bin/activate
+pip install -r requirements.txt
+deactivate
+sudo systemctl restart despesas
+sudo systemctl status despesas --no-pager
+```
+
+Se você alterou apenas HTML/CSS/Python e **não mudou** dependências, ainda é seguro rodar o `pip install -r requirements.txt` (ele só confirma o que já existe).
+
+#### Ver logs (se der erro)
+
+Aplicação (Gunicorn/systemd):
+
+```bash
+sudo journalctl -u despesas -n 200 --no-pager
+```
+
+Nginx:
+
+```bash
+sudo journalctl -u nginx -n 200 --no-pager
+sudo nginx -t
+```
+
+#### Dica: não perder o banco em atualizações
+
+- O SQLite fica em `~/despesas-receitas/instance/app.db`.
+- Atualizar o código com `git pull` **não apaga** o banco.
+- O seed (`app/seed.sql`) só roda se **não existir** nenhum registro em `lancamento`.
 
 ### URL de acesso
 

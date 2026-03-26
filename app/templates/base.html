@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Despesas e Receitas{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div class="brand">
+          <h1>{% block header_title %}Registro de despesas e receitas{% endblock %}</h1>
+          <div class="meta">{% block header_meta %}Protótipo Flask + SQLite{% endblock %}</div>
+        </div>
+        <div class="right">
+          {% if user %}
+            <span>Olá, <strong>{{ user.nome }}</strong></span>
+            <form method="post" action="{{ url_for('logout') }}" style="display:inline">
+              <button class="btn ghost small" type="submit">Sair</button>
+            </form>
+          {% endif %}
+          {% block header_right %}{% endblock %}
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+
+      <div class="footer">
+        {% block footer %}{% endblock %}
+      </div>
+    </div>
+  </body>
+</html>

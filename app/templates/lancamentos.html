@@ -1,48 +1,74 @@
-<!doctype html>
-<html lang="pt-br">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lançamentos</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #111827; }
-      header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-      h1 { font-size: 20px; margin: 0; }
-      .meta { color: #6b7280; font-size: 13px; }
-      table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 10px; }
-      th, td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
-      th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #374151; }
-      tr:hover td { background: #fcfcfd; }
-      .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
-      .pill.receita { background: #ecfdf5; color: #065f46; }
-      .pill.despesa { background: #fef2f2; color: #991b1b; }
-      .pill.ativo { background: #eff6ff; color: #1e40af; }
-      .valor { font-variant-numeric: tabular-nums; }
-      footer { margin-top: 12px; color: #6b7280; font-size: 12px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div>
-        <h1>Listagem de lançamentos</h1>
-        <div class="meta">Registro de despesas e receitas</div>
-      </div>
-      <div class="meta">
-        {% if user %}
-          Olá, {{ user.nome }} —
-          <form method="post" action="{{ url_for('logout') }}" style="display:inline">
-            <button type="submit" style="border:0;background:transparent;color:#2563eb;cursor:pointer;padding:0;font:inherit">
-              sair
-            </button>
-          </form>
-          <span style="margin: 0 8px; color:#d1d5db">|</span>
-        {% endif %}
-        Total: {{ lancamentos|length }}
-      </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="card">
+{% block title %}Lançamentos{% endblock %}
+{% block header_title %}Lançamentos{% endblock %}
+{% block header_meta %}Registro de despesas e receitas{% endblock %}
+
+{% block header_right %}
+  <span>Total: <strong>{{ lancamentos|length }}</strong></span>
+  <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
+{% endblock %}
+
+{% block content %}
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Ganhos no período</div>
+      <div class="value">R$ {{ '%.2f'|format(kpis.receitas) }}</div>
+      <div class="hint">Somatório de RECEITA</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Gastos no período</div>
+      <div class="value">R$ {{ '%.2f'|format(kpis.despesas) }}</div>
+      <div class="hint">Somatório de DESPESA</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Saldo</div>
+      <div class="value">R$ {{ '%.2f'|format(kpis.saldo) }}</div>
+      <div class="hint">Receitas − Despesas</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <form method="get" action="{{ url_for('listar_lancamentos') }}">
+      <div class="row">
+        <div>
+          <label for="q">Pesquisa</label>
+          <input id="q" name="q" placeholder="Descrição..." value="{{ filtros.q or '' }}" />
+        </div>
+        <div>
+          <label for="de">De</label>
+          <input id="de" name="de" type="date" value="{{ filtros.de or '' }}" />
+        </div>
+        <div>
+          <label for="ate">Até</label>
+          <input id="ate" name="ate" type="date" value="{{ filtros.ate or '' }}" />
+        </div>
+        <div>
+          <label for="tipo">Tipo</label>
+          <select id="tipo" name="tipo">
+            <option value="" {% if not filtros.tipo %}selected{% endif %}>Todos</option>
+            <option value="RECEITA" {% if filtros.tipo == 'RECEITA' %}selected{% endif %}>RECEITA</option>
+            <option value="DESPESA" {% if filtros.tipo == 'DESPESA' %}selected{% endif %}>DESPESA</option>
+          </select>
+        </div>
+        <div>
+          <label for="situacao">Situação</label>
+          <select id="situacao" name="situacao">
+            <option value="" {% if not filtros.situacao %}selected{% endif %}>Todas</option>
+            <option value="EM_ABERTO" {% if filtros.situacao == 'EM_ABERTO' %}selected{% endif %}>EM ABERTO</option>
+            <option value="PAGO" {% if filtros.situacao == 'PAGO' %}selected{% endif %}>PAGO</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions left">
+        <button class="btn primary small" type="submit">Filtrar</button>
+        <a class="btn small" href="{{ url_for('listar_lancamentos') }}">Limpar</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap limit-10">
       <table>
         <thead>
           <tr>
@@ -52,32 +78,47 @@
             <th>Valor</th>
             <th>Tipo</th>
             <th>Situação</th>
+            <th style="text-align:right">Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for l in lancamentos %}
-          <tr>
-            <td>{{ l.id }}</td>
-            <td>{{ l.descricao }}</td>
-            <td>{{ l.data_lancamento.strftime('%d/%m/%Y') }}</td>
-            <td class="valor">R$ {{ '%.2f'|format(l.valor) }}</td>
-            <td>
-              {% if l.tipo_lancamento == 'RECEITA' %}
-                <span class="pill receita">RECEITA</span>
-              {% else %}
-                <span class="pill despesa">DESPESA</span>
-              {% endif %}
-            </td>
-            <td><span class="pill ativo">{{ l.situacao }}</span></td>
-          </tr>
+            <tr>
+              <td class="mono">{{ l.id }}</td>
+              <td class="wide">{{ l.descricao }}</td>
+              <td class="mono">{{ l.data_lancamento.strftime('%d/%m/%Y') }}</td>
+              <td class="mono">R$ {{ '%.2f'|format(l.valor) }}</td>
+              <td>
+                {% if l.tipo_lancamento == 'RECEITA' %}
+                  <span class="pill receita">RECEITA</span>
+                {% else %}
+                  <span class="pill despesa">DESPESA</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if l.situacao == 'PAGO' %}
+                  <span class="pill pago">PAGO</span>
+                {% else %}
+                  <span class="pill emaberto">EM ABERTO</span>
+                {% endif %}
+              </td>
+              <td style="text-align:right">
+                <a class="btn small" href="{{ url_for('editar_lancamento', lancamento_id=l.id) }}">Editar</a>
+                <form method="post" action="{{ url_for('excluir_lancamento', lancamento_id=l.id) }}" style="display:inline">
+                  <button class="btn small danger" type="submit" onclick="return confirm('Excluir este lançamento?')">
+                    Excluir
+                  </button>
+                </form>
+              </td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+  </div>
+{% endblock %}
 
-    <footer>
-      Dica: para recarregar os dados de exemplo, execute o seed novamente.
-    </footer>
-  </body>
-</html>
+{% block footer %}
+  Dica: o banco SQLite fica em <span class="mono">instance/app.db</span>.
+{% endblock %}
 

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lançamentos</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #111827; }
+      header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+      h1 { font-size: 20px; margin: 0; }
+      .meta { color: #6b7280; font-size: 13px; }
+      table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 10px; }
+      th, td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+      th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #374151; }
+      tr:hover td { background: #fcfcfd; }
+      .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+      .pill.receita { background: #ecfdf5; color: #065f46; }
+      .pill.despesa { background: #fef2f2; color: #991b1b; }
+      .pill.ativo { background: #eff6ff; color: #1e40af; }
+      .valor { font-variant-numeric: tabular-nums; }
+      footer { margin-top: 12px; color: #6b7280; font-size: 12px; }
+      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Listagem de lançamentos</h1>
+        <div class="meta">Registro de despesas e receitas</div>
+      </div>
+      <div class="meta">Total: {{ lancamentos|length }}</div>
+    </header>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Descrição</th>
+            <th>Data</th>
+            <th>Valor</th>
+            <th>Tipo</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in lancamentos %}
+          <tr>
+            <td>{{ l.id }}</td>
+            <td>{{ l.descricao }}</td>
+            <td>{{ l.data_lancamento.strftime('%d/%m/%Y') }}</td>
+            <td class="valor">R$ {{ '%.2f'|format(l.valor) }}</td>
+            <td>
+              {% if l.tipo_lancamento == 'RECEITA' %}
+                <span class="pill receita">RECEITA</span>
+              {% else %}
+                <span class="pill despesa">DESPESA</span>
+              {% endif %}
+            </td>
+            <td><span class="pill ativo">{{ l.situacao }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      Dica: para recarregar os dados de exemplo, execute o seed novamente.
+    </footer>
+  </body>
+</html>
+

@@ -27,7 +27,10 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
+            <div class="flash {{ category }}" data-auto-dismiss="true">
+              <span>{{ message }}</span>
+              <button type="button" class="flash-close" aria-label="Fechar mensagem">&times;</button>
+            </div>
           {% endfor %}
         {% endif %}
       {% endwith %}
@@ -38,5 +41,21 @@
         {% block footer %}{% endblock %}
       </div>
     </div>
+    <script>
+      (function () {
+        const flashes = document.querySelectorAll(".flash[data-auto-dismiss='true']");
+        flashes.forEach((flash) => {
+          const closeBtn = flash.querySelector(".flash-close");
+          if (closeBtn) {
+            closeBtn.addEventListener("click", () => flash.remove());
+          }
+          setTimeout(() => {
+            if (flash && flash.parentNode) {
+              flash.remove();
+            }
+          }, 5000);
+        });
+      })();
+    </script>
   </body>
 </html>

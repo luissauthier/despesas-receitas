@@ -4,10 +4,7 @@
 {% block header_title %}Lançamentos{% endblock %}
 {% block header_meta %}Registro de despesas e receitas{% endblock %}
 
-{% block header_right %}
-  <span>Total: <strong>{{ lancamentos|length }}</strong></span>
-  <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
-{% endblock %}
+{% block header_right %}{% endblock %}
 
 {% block content %}
   <div class="kpis">
@@ -67,6 +64,11 @@
     </form>
   </div>
 
+  <div class="list-actions">
+    <span>Total: <strong>{{ lancamentos|length }}</strong></span>
+    <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
+  </div>
+
   <div class="card">
     <div class="table-wrap limit-10">
       <table>
@@ -119,6 +121,6 @@
 {% endblock %}
 
 {% block footer %}
-  Dica: o banco SQLite fica em <span class="mono">instance/app.db</span>.
+  <div class="spacer-bottom"></div>
 {% endblock %}
 

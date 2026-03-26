@@ -28,7 +28,18 @@
         <h1>Listagem de lançamentos</h1>
         <div class="meta">Registro de despesas e receitas</div>
       </div>
-      <div class="meta">Total: {{ lancamentos|length }}</div>
+      <div class="meta">
+        {% if user %}
+          Olá, {{ user.nome }} —
+          <form method="post" action="{{ url_for('logout') }}" style="display:inline">
+            <button type="submit" style="border:0;background:transparent;color:#2563eb;cursor:pointer;padding:0;font:inherit">
+              sair
+            </button>
+          </form>
+          <span style="margin: 0 8px; color:#d1d5db">|</span>
+        {% endif %}
+        Total: {{ lancamentos|length }}
+      </div>
     </header>
 
     <div class="card">

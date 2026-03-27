@@ -43,7 +43,7 @@ Tabela `lancamento`:
 - **data_lancamento** (DATE, NOT NULL)
 - **valor** (NUMERIC(12,2), NOT NULL)
 - **tipo_lancamento** (VARCHAR, NOT NULL) — valores esperados: `RECEITA` | `DESPESA`
-- **situacao** (VARCHAR, NOT NULL) — ex.: `ATIVO`
+- **situacao** (VARCHAR, NOT NULL) — valores esperados: `PAGO` | `EM_ABERTO`
 
 Tabela `usuario`:
 
@@ -63,13 +63,27 @@ Tabela `usuario`:
 
 ### Interface desenvolvida
 
-- **Tela**: login + listagem de lançamentos cadastrados
+- **Tela**: login + gestão de lançamentos (listagem + CRUD)
+- **Listagem**:
+  - tabela com `id`, `descrição`, `data`, `valor`, `tipo`, `situação` e ações
+  - rolagem na área da tabela (altura limitada para manter boa leitura)
+  - feedback visual com mensagens de sucesso/erro
+- **KPIs e filtros**:
+  - cards com **ganhos no período**, **gastos no período** e **saldo**
+  - filtros por texto (descrição), data inicial/final, tipo e situação
+- **Cadastro/edição/exclusão**:
+  - formulário de lançamento com data, valor, tipo e situação
+  - exclusão com confirmação
 - **Rotas**:
   - `GET /login` (formulário)
   - `POST /login` (autenticação)
   - `POST /logout` (encerrar sessão)
   - `GET /lancamentos` (listagem, protegida por login)
-- **O que exibe**: tabela com `id`, `descrição`, `data`, `valor`, `tipo` e `situação`
+  - `GET /lancamentos/novo` (formulário de criação)
+  - `POST /lancamentos/novo` (criação)
+  - `GET /lancamentos/<id>/editar` (formulário de edição)
+  - `POST /lancamentos/<id>/editar` (atualização)
+  - `POST /lancamentos/<id>/excluir` (remoção)
 
 ## Como rodar (local)
 
@@ -234,11 +248,11 @@ sudo nginx -t
 
 ## Passo 3 — Tempos (preencher)
 
-Preencha com os tempos reais gastos:
+Tempos aproximados gastos:
 
-- **Desenvolvimento da aplicação**: ___ min
-- **Criação do ambiente na VM** (instalações): ___ min
-- **Publicação/implantação** (serviço + nginx + liberação de portas): ___ min
+- **Desenvolvimento da aplicação**: 70 min
+- **Criação do ambiente na VM** (instalações): 20 min
+- **Publicação/implantação** (serviço + nginx + liberação de portas): 5 min
 
 ## Gerar PDF a partir deste Markdown (opcional)
 

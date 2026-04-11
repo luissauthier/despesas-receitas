@@ -9,11 +9,12 @@ from flask import Flask, Response, abort, flash, redirect, render_template, requ
 from sqlalchemy import inspect, text
 
 from .db import db
-from .email_service import notify_lancamento_event
+from .email_service import notify_lancamento_event, send_email_with_pdf
 from .lancamento_form import parse_lancamento_form
 from .lancamentos_filters import build_lancamentos_query, kpis_for_query
 from .models import Lancamento, Usuario
 from .pdf_export import build_lancamentos_pdf
+from .user_email import recipient_from_form_and_user, validate_usuario_email
 
 
 def create_app(test_config: dict | None = None) -> Flask:
@@ -70,6 +71,14 @@ def create_app(test_config: dict | None = None) -> Flask:
             situacao=lanc.situacao,
         )
 
+    def _redirect_list_preserving_form_filters() -> Response:
+        params: dict[str, str] = {}
+        for key in ("q", "de", "ate", "tipo", "situacao"):
+            v = (request.form.get(key) or "").strip()
+            if v:
+                params[key] = v
+        return redirect(url_for("listar_lancamentos", **params))
+
     @app.get("/")
     def index():
         guard = _require_login()
@@ -123,6 +132,93 @@ def create_app(test_config: dict | None = None) -> Flask:
             mimetype="application/pdf",
             headers={"Content-Disposition": "attachment; filename=lancamentos.pdf"},
         )
+
+    @app.post("/lancamentos/salvar-email")
+    def salvar_email_notificacao():
+        guard = _require_login()
+        if guard is not None:
+            return guard
+        user = _current_user()
+        if user is None:
+            return redirect(url_for("login"))
+
+        errors, normalized = validate_usuario_email(request.form.get("email_notificacao"))
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return _redirect_list_preserving_form_filters()
+
+        user.email = normalized
+        db.session.commit()
+        flash(
+            "E-mail salvo. Ele será usado nas notificações ao criar/editar lançamentos e como padrão no campo abaixo.",
+            "success",
+        )
+        return _redirect_list_preserving_form_filters()
+
+    @app.post("/lancamentos/enviar-pdf-email")
+    def enviar_lancamentos_pdf_email():
+        guard = _require_login()
+        if guard is not None:
+            return guard
+        user = _current_user()
+        if user is None:
+            return redirect(url_for("login"))
+
+        to_addr = recipient_from_form_and_user(
+            request.form.get("email_notificacao"),
+            user.email,
+        )
+        if not to_addr:
+            flash(
+                "Informe um e-mail no campo ou clique em Salvar e-mail após preencher.",
+                "error",
+            )
+            return _redirect_list_preserving_form_filters()
+
+        val_errors, validated = validate_usuario_email(to_addr)
+        if val_errors or not validated:
+            for e in val_errors or ["E-mail inválido."]:
+                flash(e, "error")
+            return _redirect_list_preserving_form_filters()
+
+        filter_args = {
+            "q": request.form.get("q") or "",
+            "de": request.form.get("de") or "",
+            "ate": request.form.get("ate") or "",
+            "tipo": request.form.get("tipo") or "",
+            "situacao": request.form.get("situacao") or "",
+        }
+        query, _, filter_flashes = build_lancamentos_query(filter_args)
+        for category, message in filter_flashes:
+            flash(message, category)
+
+        lancamentos = query.order_by(Lancamento.data_lancamento.desc(), Lancamento.id.desc()).all()
+        kpis = kpis_for_query(query)
+        pdf_bytes = build_lancamentos_pdf(
+            lancamentos,
+            titulo="Lançamentos (exportação)",
+            receitas=kpis["receitas"],
+            despesas=kpis["despesas"],
+            saldo=kpis["saldo"],
+        )
+
+        ok = send_email_with_pdf(
+            app,
+            [validated],
+            subject="Relatório de lançamentos (PDF)",
+            body="Segue em anexo o PDF com os lançamentos conforme os filtros ativos no momento do envio.",
+            pdf_bytes=pdf_bytes,
+            filename="lancamentos.pdf",
+        )
+        if ok:
+            flash("PDF enviado por e-mail.", "success")
+        else:
+            flash(
+                "Não foi possível enviar o e-mail. Configure o servidor SMTP (MAIL_SERVER, etc.) no ambiente.",
+                "warning",
+            )
+        return _redirect_list_preserving_form_filters()
 
     @app.get("/lancamentos/novo")
     def novo_lancamento():

@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.db import db
-from app.models import Lancamento
+from app.models import Lancamento, Usuario
 
 
 def test_login_get_returns_200(client):
@@ -87,6 +87,45 @@ def test_export_pdf_returns_pdf_mime(authenticated_client):
     assert res.status_code == 200
     assert res.mimetype == "application/pdf"
     assert res.data[:4] == b"%PDF"
+
+
+def test_salvar_email_persists(authenticated_client, app):
+    res = authenticated_client.post(
+        "/lancamentos/salvar-email",
+        data={"email_notificacao": "persistido@example.com"},
+        follow_redirects=False,
+    )
+    assert res.status_code == 302
+    with app.app_context():
+        u = db.session.get(Usuario, 1)
+        assert u.email == "persistido@example.com"
+
+
+def test_enviar_pdf_email_adds_attachment_to_outbox(authenticated_client, app):
+    app.config["_mail_outbox"] = []
+    with app.app_context():
+        u = db.session.get(Usuario, 1)
+        u.email = "dest@example.com"
+        db.session.commit()
+
+    authenticated_client.post(
+        "/lancamentos/enviar-pdf-email",
+        data={
+            "email_notificacao": "",
+            "q": "",
+            "de": "",
+            "ate": "",
+            "tipo": "",
+            "situacao": "",
+        },
+        follow_redirects=True,
+    )
+    out = app.config.get("_mail_outbox", [])
+    assert len(out) >= 1
+    last = out[-1]
+    assert last["attachments"]
+    assert last["attachments"][0]["filename"] == "lancamentos.pdf"
+    assert last["attachments"][0]["size"] > 100
 
 
 def test_delete_lancamento(authenticated_client, app):

@@ -13,16 +13,16 @@ def send_plaintext_email(
     to_addrs: list[str],
     subject: str,
     body: str,
-) -> None:
-    """Envia e-mail em texto plano. Com MAIL_SUPPRESS_SEND=True, só registra na caixa de teste."""
+) -> bool:
+    """Envia e-mail em texto plano. Com MAIL_SUPPRESS_SEND=True, só registra na caixa de teste. Retorna True se enfileirado/enviado."""
     recipients = [a.strip() for a in to_addrs if a and a.strip()]
     if not recipients:
-        return
+        return False
 
     if app.config.get("MAIL_SUPPRESS_SEND"):
         outbox: list[dict] = app.config.setdefault("_mail_outbox", [])
-        outbox.append({"to": recipients, "subject": subject, "body": body})
-        return
+        outbox.append({"to": recipients, "subject": subject, "body": body, "attachments": []})
+        return True
 
     server = app.config.get("MAIL_SERVER")
     port = int(app.config.get("MAIL_PORT") or 587)
@@ -33,7 +33,7 @@ def send_plaintext_email(
 
     if not server:
         app.logger.warning("MAIL_SERVER não configurado; e-mail não enviado.")
-        return
+        return False
 
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -47,6 +47,59 @@ def send_plaintext_email(
         if user:
             smtp.login(user, password)
         smtp.send_message(msg)
+    return True
+
+
+def send_email_with_pdf(
+    app: Flask,
+    to_addrs: list[str],
+    subject: str,
+    body: str,
+    pdf_bytes: bytes,
+    filename: str = "lancamentos.pdf",
+) -> bool:
+    """Envia e-mail com PDF anexo. Retorna True se enfileirado/enviado."""
+    recipients = [a.strip() for a in to_addrs if a and a.strip()]
+    if not recipients:
+        return False
+
+    if app.config.get("MAIL_SUPPRESS_SEND"):
+        outbox: list[dict] = app.config.setdefault("_mail_outbox", [])
+        outbox.append(
+            {
+                "to": recipients,
+                "subject": subject,
+                "body": body,
+                "attachments": [{"filename": filename, "size": len(pdf_bytes)}],
+            }
+        )
+        return True
+
+    server = app.config.get("MAIL_SERVER")
+    port = int(app.config.get("MAIL_PORT") or 587)
+    user = app.config.get("MAIL_USERNAME") or ""
+    password = app.config.get("MAIL_PASSWORD") or ""
+    use_tls = app.config.get("MAIL_USE_TLS", True)
+    sender = app.config.get("MAIL_DEFAULT_SENDER") or user or "noreply@localhost"
+
+    if not server:
+        app.logger.warning("MAIL_SERVER não configurado; e-mail com PDF não enviado.")
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = ", ".join(recipients)
+    msg.set_content(body)
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=filename)
+
+    with smtplib.SMTP(server, port, timeout=30) as smtp:
+        if use_tls:
+            smtp.starttls()
+        if user:
+            smtp.login(user, password)
+        smtp.send_message(msg)
+    return True
 
 
 def notify_lancamento_event(

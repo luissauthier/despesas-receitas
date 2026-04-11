@@ -66,12 +66,46 @@
 
   <div class="list-actions">
     <span>Total: <strong>{{ lancamentos|length }}</strong></span>
-    <a
-      class="btn small"
-      href="{{ url_for('exportar_lancamentos_pdf') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}"
-      >Exportar PDF</a
-    >
-    <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
+    <div class="list-actions-btns">
+      <a
+        class="btn small"
+        href="{{ url_for('exportar_lancamentos_pdf') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}"
+        >Exportar PDF</a
+      >
+      <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
+    </div>
+  </div>
+
+  <div class="email-panel">
+    <div class="email-panel-title">E-mail</div>
+    <p class="email-panel-hint">
+      Salve seu e-mail uma vez para receber alertas ao criar ou editar lançamentos. O mesmo endereço aparece aqui por padrão;
+      você pode alterar só para este envio sem salvar.
+    </p>
+    <form method="post" class="email-panel-form">
+      <input type="hidden" name="q" value="{{ filtros.q or '' }}" />
+      <input type="hidden" name="de" value="{{ filtros.de or '' }}" />
+      <input type="hidden" name="ate" value="{{ filtros.ate or '' }}" />
+      <input type="hidden" name="tipo" value="{{ filtros.tipo or '' }}" />
+      <input type="hidden" name="situacao" value="{{ filtros.situacao or '' }}" />
+      <div class="email-panel-field">
+        <label for="email_notificacao">E-mail para notificações e envio do PDF</label>
+        <input
+          id="email_notificacao"
+          name="email_notificacao"
+          type="email"
+          autocomplete="email"
+          placeholder="voce@exemplo.com"
+          value="{{ user.email or '' }}"
+        />
+      </div>
+      <div class="email-panel-actions">
+        <button type="submit" class="btn small" formaction="{{ url_for('salvar_email_notificacao') }}">Salvar e-mail</button>
+        <button type="submit" class="btn small primary" formaction="{{ url_for('enviar_lancamentos_pdf_email') }}">
+          Enviar PDF por e-mail
+        </button>
+      </div>
+    </form>
   </div>
 
   <div class="card">

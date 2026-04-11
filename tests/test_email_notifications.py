@@ -13,6 +13,7 @@ def test_send_plaintext_with_suppress_populates_outbox(app):
     assert len(out) == 1
     assert out[0]["to"] == ["a@b.com"]
     assert out[0]["subject"] == "Assunto"
+    assert out[0].get("attachments") == []
 
 
 def test_notify_skips_when_no_email(app):

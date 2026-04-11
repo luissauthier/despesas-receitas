@@ -18,20 +18,26 @@ Aplicação simples para cumprir os requisitos do trabalho (tabelas `lancamento`
 - **Framework web**: Flask
 - **Banco de dados**: SQLite
 - **ORM**: SQLAlchemy (via Flask-SQLAlchemy)
+- **Geração de PDF**: ReportLab
+- **Testes**: Pytest
 
-### Número de classes da aplicação
+### Estrutura do projeto
 
 Classes de domínio (models):
 
-- `Usuario`
+- `Usuario` (agora com campo `email`)
 - `Lancamento`
 
-Arquivos principais:
+Arquivos principais e novos módulos:
 
 - `app/models.py`: models SQLAlchemy (`Usuario`, `Lancamento`)
-- `app/app.py`: criação da aplicação Flask e rota de listagem (`/lancamentos`)
-- `app/templates/lancamentos.html`: interface HTML da listagem
+- `app/app.py`: criação da aplicação Flask e rotas
+- `app/email_service.py`: integração para envio de e-mails e notificações
+- `app/pdf_export.py`: lógica de geração do relatório PDF usando ReportLab
+- `app/lancamentos_filters.py`: lógica de filtros refinados e cálculo de KPIs
+- `app/templates/`: interfaces HTML (listagem, formulários, login)
 - `app/seed.sql`: script SQL de carga inicial
+- `tests/`: suíte de testes automatizados
 - `run.py`: ponto de entrada
 
 ### Modelagem do banco de dados
@@ -50,6 +56,7 @@ Tabela `usuario`:
 - **id** (INTEGER, PK)
 - **nome** (VARCHAR, NOT NULL)
 - **login** (VARCHAR, NOT NULL, UNIQUE)
+- **email** (VARCHAR) — novo campo para notificações
 - **senha** (VARCHAR, NOT NULL)
 - **situacao** (VARCHAR, NOT NULL) — ex.: `ATIVO`
 
@@ -64,26 +71,54 @@ Tabela `usuario`:
 ### Interface desenvolvida
 
 - **Tela**: login + gestão de lançamentos (listagem + CRUD)
-- **Listagem**:
-  - tabela com `id`, `descrição`, `data`, `valor`, `tipo`, `situação` e ações
-  - rolagem na área da tabela (altura limitada para manter boa leitura)
-  - feedback visual com mensagens de sucesso/erro
-- **KPIs e filtros**:
-  - cards com **ganhos no período**, **gastos no período** e **saldo**
-  - filtros por texto (descrição), data inicial/final, tipo e situação
+- **Listagem e Relatórios**:
+  - Tabela com `id`, `descrição`, `data`, `valor`, `tipo`, `situação` e ações.
+  - **Exportação PDF**: Botão para gerar um relatório PDF dos lançamentos filtrados.
+  - **Envio por E-mail**: Opção para enviar o relatório PDF diretamente para o e-mail do usuário ou outro destinatário informado.
 - **Cadastro/edição/exclusão**:
   - formulário de lançamento com data, valor, tipo e situação
   - exclusão com confirmação
+- **KPIs e filtros**:
+  - Cards com **ganhos no período**, **gastos no período** e **saldo**.
+  - Filtros por texto (descrição), data inicial/final, tipo e situação.
+  - **Preservação de filtros**: Os filtros aplicados são mantidos ao navegar entre criação e edição.
+- **Notificações**:
+  - Disparo de e-mail automático ao criar ou atualizar um lançamento (se o e-mail do usuário estiver configurado).
 - **Rotas**:
-  - `GET /login` (formulário)
-  - `POST /login` (autenticação)
-  - `POST /logout` (encerrar sessão)
-  - `GET /lancamentos` (listagem, protegida por login)
-  - `GET /lancamentos/novo` (formulário de criação)
-  - `POST /lancamentos/novo` (criação)
-  - `GET /lancamentos/<id>/editar` (formulário de edição)
-  - `POST /lancamentos/<id>/editar` (atualização)
-  - `POST /lancamentos/<id>/excluir` (remoção)
+  - `GET /login` / `POST /login` / `POST /logout`
+  - `GET /lancamentos` (listagem principal)
+  - `GET /lancamentos/exportar-pdf` (gera e baixa o PDF)
+  - `POST /lancamentos/enviar-pdf-email` (envia o PDF por e-mail)
+  - `POST /lancamentos/salvar-email` (configura e-mail de notificação do usuário)
+  - `GET /lancamentos/novo` / `POST /lancamentos/novo` (CRUD)
+  - `GET /lancamentos/<id>/editar` / `POST /lancamentos/<id>/editar` (CRUD)
+  - `POST /lancamentos/<id>/excluir` (CRUD)
+
+## Testes Automatizados
+
+A aplicação possui uma suíte de testes que cobre rotas HTTP, modelos, validação de formulários, geração de PDF e integração de e-mail.
+
+### Como rodar os testes
+
+Certifique-se de estar com o ambiente virtual ativo e as dependências instaladas:
+
+```powershell
+pytest
+```
+
+Para ver detalhes da execução (verbose):
+
+```powershell
+pytest -v
+```
+
+### O que é testado
+
+- **Rotas e Autenticação**: Proteção de rotas, login/logout e acessibilidade das páginas de CRUD.
+- **Formulários**: Validação de campos obrigatórios, tipos de dados (data, valor) e integridade dos inputs.
+- **Exportação (PDF)**: Verificação se o arquivo PDF é gerado corretamente com os cabeçalhos esperados.
+- **E-mail**: Mocking do serviço de e-mail para validar o disparo de notificações e envio de anexos.
+- **Modelos e Filtros**: Consultas ao banco de dados, cálculos de KPIs (Ganhos, Gastos, Saldo) e aplicação correta de filtros de busca.
 
 ## Como rodar (local)
 

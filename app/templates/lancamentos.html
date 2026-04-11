@@ -66,6 +66,11 @@
 
   <div class="list-actions">
     <span>Total: <strong>{{ lancamentos|length }}</strong></span>
+    <a
+      class="btn small"
+      href="{{ url_for('exportar_lancamentos_pdf') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}"
+      >Exportar PDF</a
+    >
     <a class="btn primary small" href="{{ url_for('novo_lancamento') }}">Novo lançamento</a>
   </div>
 

@@ -3,17 +3,20 @@ from __future__ import annotations
 import os
 import sqlite3
 from datetime import date
-from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import func
+from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
+from sqlalchemy import inspect, text
 
 from .db import db
+from .email_service import notify_lancamento_event
+from .lancamento_form import parse_lancamento_form
+from .lancamentos_filters import build_lancamentos_query, kpis_for_query
 from .models import Lancamento, Usuario
+from .pdf_export import build_lancamentos_pdf
 
 
-def create_app() -> Flask:
+def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
 
     base_dir = Path(__file__).resolve().parent.parent
@@ -24,12 +27,24 @@ def create_app() -> Flask:
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path.as_posix()}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
+    app.config["MAIL_SUPPRESS_SEND"] = os.getenv("MAIL_SUPPRESS_SEND", "").lower() in ("1", "true", "yes")
+    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "")
+    app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "587"))
+    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ("1", "true", "yes")
+    app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
+    app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "")
+    app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", "")
+
+    if test_config:
+        app.config.update(test_config)
 
     db.init_app(app)
 
     with app.app_context():
         db.create_all()
-        _seed_if_empty(db_path=db_path)
+        _migrate_sqlite_usuario_email()
+        if not app.config.get("TESTING"):
+            _seed_if_empty(db_path=db_path)
 
     def _current_user() -> Usuario | None:
         user_id = session.get("user_id")
@@ -42,55 +57,18 @@ def create_app() -> Flask:
             return redirect(url_for("login", next=request.full_path))
         return None
 
-    def _parse_lancamento_form(form: dict[str, str]):
-        descricao = (form.get("descricao") or "").strip()
-        data_raw = (form.get("data_lancamento") or "").strip()
-        valor_raw = (form.get("valor") or "").strip().replace(",", ".")
-        tipo = (form.get("tipo_lancamento") or "").strip().upper()
-        situacao = (form.get("situacao") or "").strip().upper()
-
-        errors: list[str] = []
-
-        if not descricao:
-            errors.append("Descrição é obrigatória.")
-        elif len(descricao) > 255:
-            errors.append("Descrição deve ter no máximo 255 caracteres.")
-
-        parsed_date: date | None = None
-        if not data_raw:
-            data_raw = date.today().isoformat()
-        try:
-            parsed_date = date.fromisoformat(data_raw)
-        except ValueError:
-            errors.append("Data inválida.")
-
-        parsed_valor: Decimal | None = None
-        if not valor_raw:
-            errors.append("Valor é obrigatório.")
-        else:
-            try:
-                parsed_valor = Decimal(valor_raw)
-            except (InvalidOperation, ValueError):
-                errors.append("Valor inválido. Use formato como 123.45")
-            else:
-                if parsed_valor <= 0:
-                    errors.append("Valor deve ser maior que zero.")
-
-        if tipo not in {"RECEITA", "DESPESA"}:
-            errors.append("Tipo deve ser RECEITA ou DESPESA.")
-
-        if situacao not in {"PAGO", "EM_ABERTO"}:
-            errors.append("Situação deve ser PAGO ou EM_ABERTO.")
-
-        cleaned = {
-            "descricao": descricao,
-            "data_lancamento": data_raw,
-            "valor": (form.get("valor") or "").strip(),
-            "tipo_lancamento": tipo or "RECEITA",
-            "situacao": situacao or "EM_ABERTO",
-        }
-
-        return errors, cleaned, parsed_date, parsed_valor, tipo, situacao
+    def _notify_lancamento_saved(lanc: Lancamento, *, event: str) -> None:
+        user = _current_user()
+        notify_lancamento_event(
+            app,
+            user.email if user else None,
+            event=event,
+            descricao=lanc.descricao,
+            data_str=lanc.data_lancamento.isoformat(),
+            valor_str=str(lanc.valor),
+            tipo=lanc.tipo_lancamento,
+            situacao=lanc.situacao,
+        )
 
     @app.get("/")
     def index():
@@ -105,47 +83,12 @@ def create_app() -> Flask:
         if guard is not None:
             return guard
 
-        q = (request.args.get("q") or "").strip()
-        tipo = (request.args.get("tipo") or "").strip().upper()
-        situacao = (request.args.get("situacao") or "").strip().upper()
-        de = (request.args.get("de") or "").strip()
-        ate = (request.args.get("ate") or "").strip()
-
-        query = Lancamento.query
-
-        if q:
-            query = query.filter(Lancamento.descricao.ilike(f"%{q}%"))
-        if tipo in {"RECEITA", "DESPESA"}:
-            query = query.filter(Lancamento.tipo_lancamento == tipo)
-        if situacao in {"PAGO", "EM_ABERTO"}:
-            query = query.filter(Lancamento.situacao == situacao)
-        if de:
-            try:
-                query = query.filter(Lancamento.data_lancamento >= date.fromisoformat(de))
-            except ValueError:
-                flash("Filtro 'de' inválido.", "warning")
-        if ate:
-            try:
-                query = query.filter(Lancamento.data_lancamento <= date.fromisoformat(ate))
-            except ValueError:
-                flash("Filtro 'até' inválido.", "warning")
+        query, filtros, filter_flashes = build_lancamentos_query(request.args)
+        for category, message in filter_flashes:
+            flash(message, category)
 
         lancamentos = query.order_by(Lancamento.data_lancamento.desc(), Lancamento.id.desc()).all()
-
-        receita_total = (
-            query.with_entities(func.coalesce(func.sum(Lancamento.valor), 0))
-            .filter(Lancamento.tipo_lancamento == "RECEITA")
-            .scalar()
-        )
-        despesa_total = (
-            query.with_entities(func.coalesce(func.sum(Lancamento.valor), 0))
-            .filter(Lancamento.tipo_lancamento == "DESPESA")
-            .scalar()
-        )
-        saldo = Decimal(str(receita_total)) - Decimal(str(despesa_total))
-
-        filtros = {"q": q, "tipo": tipo, "situacao": situacao, "de": de, "ate": ate}
-        kpis = {"receitas": receita_total, "despesas": despesa_total, "saldo": saldo}
+        kpis = kpis_for_query(query)
 
         return render_template(
             "lancamentos.html",
@@ -153,6 +96,32 @@ def create_app() -> Flask:
             user=_current_user(),
             filtros=filtros,
             kpis=kpis,
+        )
+
+    @app.get("/lancamentos/exportar-pdf")
+    def exportar_lancamentos_pdf():
+        guard = _require_login()
+        if guard is not None:
+            return guard
+
+        query, filtros, filter_flashes = build_lancamentos_query(request.args)
+        for category, message in filter_flashes:
+            flash(message, category)
+
+        lancamentos = query.order_by(Lancamento.data_lancamento.desc(), Lancamento.id.desc()).all()
+        kpis = kpis_for_query(query)
+
+        pdf_bytes = build_lancamentos_pdf(
+            lancamentos,
+            titulo="Lançamentos (exportação)",
+            receitas=kpis["receitas"],
+            despesas=kpis["despesas"],
+            saldo=kpis["saldo"],
+        )
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=lancamentos.pdf"},
         )
 
     @app.get("/lancamentos/novo")
@@ -184,7 +153,7 @@ def create_app() -> Flask:
         if guard is not None:
             return guard
 
-        errors, cleaned, parsed_date, parsed_valor, tipo, situacao = _parse_lancamento_form(
+        errors, cleaned, parsed_date, parsed_valor, tipo, situacao = parse_lancamento_form(
             request.form.to_dict()
         )
         if errors:
@@ -210,6 +179,7 @@ def create_app() -> Flask:
         )
         db.session.add(lanc)
         db.session.commit()
+        _notify_lancamento_saved(lanc, event="create")
         flash("Lançamento criado com sucesso.", "success")
         return redirect(url_for("listar_lancamentos"))
 
@@ -218,7 +188,9 @@ def create_app() -> Flask:
         guard = _require_login()
         if guard is not None:
             return guard
-        lanc = Lancamento.query.get_or_404(lancamento_id)
+        lanc = db.session.get(Lancamento, lancamento_id)
+        if lanc is None:
+            abort(404)
         form = {
             "descricao": lanc.descricao,
             "data_lancamento": lanc.data_lancamento.isoformat(),
@@ -242,9 +214,11 @@ def create_app() -> Flask:
         guard = _require_login()
         if guard is not None:
             return guard
-        lanc = Lancamento.query.get_or_404(lancamento_id)
+        lanc = db.session.get(Lancamento, lancamento_id)
+        if lanc is None:
+            abort(404)
 
-        errors, cleaned, parsed_date, parsed_valor, tipo, situacao = _parse_lancamento_form(
+        errors, cleaned, parsed_date, parsed_valor, tipo, situacao = parse_lancamento_form(
             request.form.to_dict()
         )
         if errors:
@@ -267,6 +241,7 @@ def create_app() -> Flask:
         lanc.tipo_lancamento = tipo
         lanc.situacao = situacao
         db.session.commit()
+        _notify_lancamento_saved(lanc, event="update")
         flash("Lançamento atualizado com sucesso.", "success")
         return redirect(url_for("listar_lancamentos"))
 
@@ -275,7 +250,9 @@ def create_app() -> Flask:
         guard = _require_login()
         if guard is not None:
             return guard
-        lanc = Lancamento.query.get_or_404(lancamento_id)
+        lanc = db.session.get(Lancamento, lancamento_id)
+        if lanc is None:
+            abort(404)
         db.session.delete(lanc)
         db.session.commit()
         flash(f"Lançamento #{lancamento_id} excluído.", "success")
@@ -313,6 +290,20 @@ def create_app() -> Flask:
     return app
 
 
+def _migrate_sqlite_usuario_email() -> None:
+    uri = db.engine.url.drivername
+    if uri != "sqlite":
+        return
+    try:
+        cols = {c["name"] for c in inspect(db.engine).get_columns("usuario")}
+    except Exception:
+        return
+    if "email" in cols:
+        return
+    with db.engine.begin() as conn:
+        conn.execute(text("ALTER TABLE usuario ADD COLUMN email VARCHAR(120)"))
+
+
 def _seed_if_empty(db_path: Path) -> None:
     if Lancamento.query.first() is not None:
         return
@@ -329,4 +320,3 @@ def _seed_if_empty(db_path: Path) -> None:
 
 if __name__ == "__main__":
     create_app().run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
-

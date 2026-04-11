@@ -3,8 +3,8 @@
 DELETE FROM lancamento;
 DELETE FROM usuario;
 
-INSERT INTO usuario (id, nome, login, senha, situacao)
-VALUES (1, 'Admin', 'admin', 'admin123', 'ATIVO');
+INSERT INTO usuario (id, nome, login, email, senha, situacao)
+VALUES (1, 'Admin', 'admin', NULL, 'admin123', 'ATIVO');
 
 INSERT INTO lancamento (id, descricao, data_lancamento, valor, tipo_lancamento, situacao) VALUES
 (1, 'Salário', '2026-03-01', 5500.00, 'RECEITA', 'PAGO'),

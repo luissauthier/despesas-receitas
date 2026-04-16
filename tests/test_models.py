@@ -9,6 +9,7 @@ from app.db import db
 from app.models import Lancamento, Usuario
 
 
+# Garante que as propriedades básicas do Usuário são persistidas corretamente no banco.
 def test_usuario_persisted_fields(app):
     with app.app_context():
         u = Usuario.query.filter_by(login="tester").first()
@@ -17,6 +18,7 @@ def test_usuario_persisted_fields(app):
         assert u.situacao == "ATIVO"
 
 
+# Testa a inserção de um lançamento e valida a integridade do tipo Decimal para valores monetários.
 def test_lancamento_insert_and_query(app):
     with app.app_context():
         l = Lancamento(

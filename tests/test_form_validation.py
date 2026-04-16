@@ -7,6 +7,8 @@ from datetime import date
 from app.lancamento_form import parse_lancamento_form
 
 
+# Testa o parsing de um formulário preenchido corretamente.
+# Valida a conversão de strings para tipos Python (date e Decimal).
 def test_parse_valid_form():
     form = {
         "descricao": "Conta de luz",
@@ -35,6 +37,7 @@ def test_parse_rejects_empty_descricao():
     assert any("Descrição" in e for e in errors)
 
 
+# Valida se o sistema rejeita valores negativos ou iguais a zero, conforme regra de negócio.
 def test_parse_rejects_non_positive_valor():
     form = {
         "descricao": "X",

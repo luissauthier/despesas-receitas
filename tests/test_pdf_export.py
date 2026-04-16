@@ -9,11 +9,14 @@ from app.models import Lancamento
 from app.pdf_export import build_lancamentos_pdf
 
 
-def test_pdf_starts_with_pdf_magic():
+# Verifica a "assinatura" do arquivo (Magic Number).
+# Todo PDF válido deve começar com os bytes "%PDF".
+def test_pdf_magic_number(app):
     pdf = build_lancamentos_pdf([], receitas=0, despesas=0, saldo=0)
     assert pdf[:4] == b"%PDF"
 
 
+# Valida se a inclusão de dados reais no PDF gera um arquivo com conteúdo (tamanho maior que o cabeçalho mínimo).
 def test_pdf_non_empty_with_rows():
     l = Lancamento(
         descricao="Supermercado",

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from flask import Flask
 
 
+# Envio de e-mail em texto simples.
 def send_plaintext_email(
     app: Flask,
     to_addrs: list[str],
@@ -19,6 +20,9 @@ def send_plaintext_email(
     if not recipients:
         return False
 
+    # Mecanismo de Interceptação (Mock): Se configurado para suprimir o envio,
+    # as informações são apenas salvas em uma lista na memória para validação nos testes.
+    # Isso evita envios reais durante a automação de testes.
     if app.config.get("MAIL_SUPPRESS_SEND"):
         outbox: list[dict] = app.config.setdefault("_mail_outbox", [])
         outbox.append({"to": recipients, "subject": subject, "body": body, "attachments": []})
@@ -41,6 +45,7 @@ def send_plaintext_email(
     msg["To"] = ", ".join(recipients)
     msg.set_content(body)
 
+    # Estabelece conexão segura com o servidor SMTP e realiza o envio.
     with smtplib.SMTP(server, port, timeout=30) as smtp:
         if use_tls:
             smtp.starttls()
@@ -63,6 +68,7 @@ def send_email_with_pdf(
     if not recipients:
         return False
 
+    # Mecanismo de Interceptação: Evita envios reais em ambiente de testes automatizados.
     if app.config.get("MAIL_SUPPRESS_SEND"):
         outbox: list[dict] = app.config.setdefault("_mail_outbox", [])
         outbox.append(
@@ -93,6 +99,7 @@ def send_email_with_pdf(
     msg.set_content(body)
     msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=filename)
 
+    # Abre conexão com o servidor de e-mail para envio da mensagem com anexo PDF.
     with smtplib.SMTP(server, port, timeout=30) as smtp:
         if use_tls:
             smtp.starttls()

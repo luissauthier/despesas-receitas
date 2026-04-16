@@ -14,6 +14,8 @@ def test_login_get_returns_200(client):
     assert res.status_code == 200
 
 
+# Testa se a página inicial redireciona visitantes (não logados) para o login.
+# Valida o status 302 (Found/Redirect) e o cabeçalho Location.
 def test_root_redirects_guest_to_login(client):
     res = client.get("/", follow_redirects=False)
     assert res.status_code == 302
@@ -40,6 +42,8 @@ def test_login_post_sets_session_and_redirects(client, app):
     assert "/lancamentos" in res.headers.get("Location", "")
 
 
+# Testa a persistência de um novo lançamento enviado via POST.
+# Verifica se o sistema processa o formulário, redireciona e realmente salva no banco.
 def test_create_lancamento_post_persists(authenticated_client, app):
     app.config["_mail_outbox"] = []
     res = authenticated_client.post(
@@ -82,6 +86,8 @@ def test_export_pdf_requires_login(client):
     assert res.status_code == 302
 
 
+# Valida a integridade do arquivo PDF exportado.
+# Verifica o MIME-type correto e a assinatura "%PDF-" nos primeiros bytes.
 def test_export_pdf_returns_pdf_mime(authenticated_client):
     res = authenticated_client.get("/lancamentos/exportar-pdf")
     assert res.status_code == 200

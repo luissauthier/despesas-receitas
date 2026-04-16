@@ -32,6 +32,7 @@ def _seed_lancamentos(app):
         db.session.commit()
 
 
+# Valida a regra de negócio de filtragem por situação (PAGO/EM_ABERTO).
 def test_filter_by_situacao(app):
     _seed_lancamentos(app)
     with app.app_context():
@@ -42,6 +43,7 @@ def test_filter_by_situacao(app):
         assert items[0].descricao == "B"
 
 
+# Garante que a busca por intervalo de datas funciona corretamente, excluindo registros fora do range.
 def test_filter_by_date_range(app):
     _seed_lancamentos(app)
     with app.app_context():
@@ -51,6 +53,7 @@ def test_filter_by_date_range(app):
         assert items[0].descricao == "B"
 
 
+# Valida se os cálculos de totais (Receitas/Despesas) exibidos no dash refletem os filtros aplicados.
 def test_kpis_reflect_filtered_rows(app):
     _seed_lancamentos(app)
     with app.app_context():

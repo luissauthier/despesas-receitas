@@ -11,6 +11,8 @@ from reportlab.pdfgen import canvas
 from .models import Lancamento
 
 
+# Função principal para geração do relatório PDF. 
+# Recebe os dados processados e os totais para compor o cabeçalho e a tabela.
 def build_lancamentos_pdf(
     lancamentos: list[Lancamento],
     *,
@@ -19,6 +21,8 @@ def build_lancamentos_pdf(
     despesas: Decimal | float | int = 0,
     saldo: Decimal | float | int = 0,
 ) -> bytes:
+    # Utiliza BytesIO para gerar o PDF inteiramente em memória,
+    # evitando escrita em disco e melhorando a performance/segurança.
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     width, height = A4
@@ -47,6 +51,7 @@ def build_lancamentos_pdf(
 
     c.setFont("Helvetica", 8)
     for l in lancamentos:
+        # Verifica se o cursor Y atingiu o limite inferior da página para realizar a quebra automática.
         if y < 2.5 * cm:
             c.showPage()
             y = height - 2 * cm

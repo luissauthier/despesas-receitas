@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  testes-cobertura-build-sonar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Executar testes automatizados
+        run: pytest -v
+
+      - name: Gerar cobertura
+        run: |
+          coverage run -m pytest
+          coverage xml
+          coverage report
+
+      - name: Gerar build Docker
+        run: docker build -t despesas-receitas-ci .
+
+      - name: Analise de qualidade com SonarQube
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

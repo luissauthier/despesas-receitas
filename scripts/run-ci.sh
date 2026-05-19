@@ -9,7 +9,6 @@ echo "Executando testes automatizados no container..."
 docker compose run --rm homolog pytest -v
 
 echo "Executando cobertura de testes no container..."
-docker compose run --rm homolog sh -c "coverage run -m pytest && coverage report"
+docker compose run --rm homolog sh -c "coverage run -m pytest && coverage report && coverage xml"
 
 echo "Pipeline de integracao finalizado com sucesso."
-

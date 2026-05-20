@@ -231,6 +231,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "valor": "",
             "tipo_lancamento": "RECEITA",
             "situacao": "EM_ABERTO",
+            "observacao": "",
         }
         return render_template(
             "lancamento_form.html",
@@ -272,6 +273,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             valor=parsed_valor,
             tipo_lancamento=tipo,
             situacao=situacao,
+            observacao=cleaned["observacao"],
         )
         db.session.add(lanc)
         db.session.commit()
@@ -293,6 +295,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             "valor": str(lanc.valor),
             "tipo_lancamento": lanc.tipo_lancamento,
             "situacao": lanc.situacao,
+            "observacao": lanc.observacao or "",
         }
         return render_template(
             "lancamento_form.html",
@@ -336,6 +339,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         lanc.valor = parsed_valor
         lanc.tipo_lancamento = tipo
         lanc.situacao = situacao
+        lanc.observacao = cleaned["observacao"]
         db.session.commit()
         _notify_lancamento_saved(lanc, event="update")
         flash("Lançamento atualizado com sucesso.", "success")

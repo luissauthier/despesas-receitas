@@ -115,6 +115,7 @@
           <tr>
             <th>ID</th>
             <th>Descrição</th>
+            <th>Observação</th>
             <th>Data</th>
             <th>Valor</th>
             <th>Tipo</th>
@@ -127,6 +128,7 @@
             <tr>
               <td class="mono">{{ l.id }}</td>
               <td class="wide">{{ l.descricao }}</td>
+              <td class="wide">{{ l.observacao or '-' }}</td>              
               <td class="mono">{{ l.data_lancamento.strftime('%d/%m/%Y') }}</td>
               <td class="mono">R$ {{ '%.2f'|format(l.valor) }}</td>
               <td>

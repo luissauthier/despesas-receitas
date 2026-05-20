@@ -11,6 +11,7 @@ def parse_lancamento_form(form: dict[str, str]):
     valor_raw = (form.get("valor") or "").strip().replace(",", ".")
     tipo = (form.get("tipo_lancamento") or "").strip().upper()
     situacao = (form.get("situacao") or "").strip().upper()
+    observacao = (form.get("observacao") or "").strip()
 
     errors: list[str] = []
 
@@ -51,6 +52,7 @@ def parse_lancamento_form(form: dict[str, str]):
         "valor": (form.get("valor") or "").strip(),
         "tipo_lancamento": tipo or "RECEITA",
         "situacao": situacao or "EM_ABERTO",
+        "observacao": observacao,
     }
 
     return errors, cleaned, parsed_date, parsed_valor, tipo, situacao

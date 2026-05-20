@@ -47,7 +47,15 @@
           </div>
           <div></div>
         </div>
-
+        <div>
+          <label for="observacao">Observação</label>
+          <textarea
+            id="observacao"
+            name="observacao"
+            rows="3"
+            placeholder="Informações complementares sobre o lançamento"
+          >{{ form.observacao or '' }}</textarea>
+        </div>
         <div class="actions">
           {% if show_delete and lancamento_id %}
             <button

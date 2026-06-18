@@ -25,4 +25,5 @@ class Lancamento(db.Model):
     valor = db.Column(db.Numeric(12, 2), nullable=False)
     tipo_lancamento = db.Column(db.String(20), nullable=False)  # RECEITA | DESPESA
     situacao = db.Column(db.String(20), nullable=False, default="EM_ABERTO")  # PAGO | EM_ABERTO
+    observacao = db.Column(db.Text, nullable=True)
 

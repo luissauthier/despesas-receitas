@@ -54,6 +54,7 @@ def test_create_lancamento_post_persists(authenticated_client, app):
             "valor": "55.00",
             "tipo_lancamento": "RECEITA",
             "situacao": "PAGO",
+            "observacao": "Compra mensal registrada para validacao",
         },
         follow_redirects=False,
     )
@@ -61,6 +62,7 @@ def test_create_lancamento_post_persists(authenticated_client, app):
     with app.app_context():
         row = Lancamento.query.filter_by(descricao="Novo item HTTP").first()
         assert row is not None
+        assert row.observacao == "Compra mensal registrada para validacao"
 
 
 def test_create_lancamento_sends_notification_to_outbox(authenticated_client, app):

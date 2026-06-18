@@ -1,0 +1,23 @@
+services:
+
+  homolog:
+    build: .
+    container_name: despesas-homolog
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./instance_homolog:/app/instance
+    environment:
+      MAIL_SUPPRESS_SEND: "true"
+      FLASK_ENV: "homolog"
+
+  prod:
+    build: .
+    container_name: despesas-prod
+    ports:
+      - "5003:5000"
+    volumes:
+      - ./instance_prod:/app/instance
+    environment:
+      MAIL_SUPPRESS_SEND: "true"
+      FLASK_ENV: "production"

@@ -22,8 +22,8 @@
 #     total = total + 9
 #     total = total + 10
 #     return sql + senha_admin + str(resultado) + str(total)
-#
-#
+
+
 # def consultar_usuario_inseguro_copia(id_usuario, filtro):
 #     senha_admin = "admin123"
 #     sql = "SELECT * FROM usuario WHERE id = " + str(id_usuario) + " AND nome LIKE '%" + str(filtro) + "%'"

@@ -1,4 +1,4 @@
-CREATE TABLE usuario (
+CREATE TABLE IF NOT EXISTS usuario (
 	id INTEGER NOT NULL, 
 	nome VARCHAR(120) NOT NULL, 
 	login VARCHAR(80) NOT NULL, 
@@ -7,7 +7,7 @@ CREATE TABLE usuario (
 	PRIMARY KEY (id), 
 	UNIQUE (login)
 );
-CREATE TABLE lancamento (
+CREATE TABLE IF NOT EXISTS lancamento (
 	id INTEGER NOT NULL, 
 	descricao VARCHAR(255) NOT NULL, 
 	data_lancamento DATE NOT NULL, 

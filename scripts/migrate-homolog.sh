@@ -5,6 +5,10 @@ set -e
 DB="./instance_homolog/app.db"
 MIGRATIONS_DIR="./migrations"
 
+echo "Ajustando permissoes do banco de Homologacao..."
+sudo chown -R univates:jenkins ./instance_homolog 2>/dev/null || true
+sudo chmod -R g+rwX ./instance_homolog 2>/dev/null || true
+
 echo "Aplicando migrations no banco de Homologacao..."
 
 sqlite3 "$DB" "

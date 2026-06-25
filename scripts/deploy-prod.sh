@@ -7,8 +7,10 @@ echo "Atualizando ambiente de Producao..."
 git checkout develop
 git pull origin develop
 
-echo "Removendo container antigo de Producao, se existir..."
-docker rm -f despesas-prod 2>/dev/null || true
+echo "Removendo containers antigos de Producao, se existirem..."
+docker-compose stop prod 2>/dev/null || true
+docker-compose rm -f -s prod 2>/dev/null || true
+docker rm -f $(docker ps -aq --filter "name=despesas-prod") 2>/dev/null || true
 
 echo "Subindo Producao atualizada..."
 docker-compose up -d --build prod
